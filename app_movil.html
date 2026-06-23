@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Gastos Mauricio</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;font-family:Arial,sans-serif;-webkit-tap-highlight-color:transparent}
+body{background:#f0f2f5;color:#222;min-height:100vh}
+.header{background:#1a237e;color:#fff;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:10}
+.header h1{font-size:16px}
+.tabs{display:flex;background:#fff;border-bottom:1px solid #eee}
+.tab{flex:1;padding:12px 4px;text-align:center;cursor:pointer;font-size:12px;color:#666;font-weight:500}
+.tab.on{color:#1a237e;border-bottom:2px solid #1a237e}
+.pane{display:none;padding:12px}.pane.on{display:block}
+
+/* REGISTRAR */
+.card{background:#fff;border-radius:12px;padding:16px;margin-bottom:12px;box-shadow:0 1px 4px rgba(0,0,0,.08)}
+.card h2{font-size:14px;font-weight:700;margin-bottom:12px;color:#1a237e}
+.field{margin-bottom:12px}
+.field label{display:block;font-size:11px;color:#666;margin-bottom:4px;font-weight:600;text-transform:uppercase;letter-spacing:.3px}
+.field input,.field select,.field textarea{width:100%;padding:10px 12px;border:1px solid #ddd;border-radius:8px;font-size:14px;background:#f8f9fa}
+.field input:focus,.field select:focus{outline:none;border-color:#1a237e;background:#fff}
+.monto-display{font-size:32px;font-weight:700;color:#c0392b;text-align:center;padding:16px;background:#fff5f5;border-radius:8px;margin-bottom:12px;letter-spacing:1px}
+.numpad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
+.nkey{padding:16px;background:#fff;border:1px solid #eee;border-radius:10px;text-align:center;font-size:18px;font-weight:600;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+.nkey:active{background:#e8f0fb}
+.nkey.del{color:#c0392b}
+.nkey.ok{background:#1a237e;color:#fff;border:none}
+.cats-wrap{display:flex;flex-wrap:wrap;gap:6px;max-height:200px;overflow-y:auto}
+.cchip{padding:6px 12px;border-radius:20px;font-size:12px;border:1px solid #ddd;background:#f5f5f5;cursor:pointer;font-weight:500}
+.cchip.on{border-color:#1a237e;background:#e8f0fb;color:#1a237e}
+.btn-save{width:100%;padding:14px;background:#1a237e;color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;margin-top:4px}
+.btn-save:active{background:#283593}
+.btn-save:disabled{background:#aaa}
+
+/* HISTORIAL */
+.gasto-item{background:#fff;border-radius:10px;padding:12px 14px;margin-bottom:8px;box-shadow:0 1px 3px rgba(0,0,0,.06);display:flex;align-items:center;justify-content:space-between}
+.gasto-left{flex:1}
+.gasto-desc{font-size:13px;font-weight:600;margin-bottom:2px}
+.gasto-meta{font-size:11px;color:#888}
+.gasto-right{text-align:right}
+.gasto-monto{font-size:15px;font-weight:700;color:#c0392b}
+.gasto-cat{font-size:10px;padding:2px 7px;border-radius:10px;margin-top:3px;display:inline-block}
+.empty{text-align:center;color:#aaa;padding:40px;font-size:13px}
+
+/* Toast */
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#1a7a4a;color:#fff;padding:10px 20px;border-radius:20px;font-size:13px;display:none;z-index:200;white-space:nowrap}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>💰 Gastos Mauricio</h1>
+  <span id="sync" style="font-size:11px;opacity:.8">•</span>
+</div>
+
+<div class="tabs">
+  <div class="tab on" onclick="showT('reg')">＋ Registrar</div>
+  <div class="tab" onclick="showT('hist')">📋 Historial</div>
+</div>
+
+<div id="pane-reg" class="pane on">
+  <div class="card">
+    <h2>Nuevo gasto</h2>
+    <div class="monto-display" id="monto-display">$0</div>
+    <div class="numpad">
+      <div class="nkey" onclick="nk('1')">1</div><div class="nkey" onclick="nk('2')">2</div><div class="nkey" onclick="nk('3')">3</div>
+      <div class="nkey" onclick="nk('4')">4</div><div class="nkey" onclick="nk('5')">5</div><div class="nkey" onclick="nk('6')">6</div>
+      <div class="nkey" onclick="nk('7')">7</div><div class="nkey" onclick="nk('8')">8</div><div class="nkey" onclick="nk('9')">9</div>
+      <div class="nkey" onclick="nk('000')">000</div><div class="nkey" onclick="nk('0')">0</div><div class="nkey del" onclick="nkDel()">⌫</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="field">
+      <label>Descripción</label>
+      <input type="text" id="inp-desc" placeholder="Ej: Starbucks, Copec, Farmacia...">
+    </div>
+    <div class="field">
+      <label>Categoría</label>
+      <div class="cats-wrap" id="cats-wrap"></div>
+    </div>
+    <div class="field">
+      <label>Nota (opcional)</label>
+      <input type="text" id="inp-nota" placeholder="Ej: con Valentina, regreso bikepark...">
+    </div>
+    <button class="btn-save" id="btn-save" onclick="guardar()">Guardar gasto</button>
+  </div>
+</div>
+
+<div id="pane-hist" class="pane">
+  <div id="hist-list"><div class="empty">Cargando...</div></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const SB_URL='https://lrlrsrzjizqodanermsw.supabase.co';
+const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxybHJzcnpqaXpxb2RhbmVybXN3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIxNjY1ODAsImV4cCI6MjA5Nzc0MjU4MH0.i6n0GPmpSfjPPD9MXq7zpyi3OMpQoBc3jviiFr7Sw_o';
+
+const CATS=["Abono Línea","Agua","Animales alimento","Animales doctor","Animales otros","Animales peluquería","Arriendo","Autopistas","Bencina","Bicicleta bikepark","Bicicleta otros","Bicicleta suscripción","Carrete","Casa servicios","Celular","Cigarros y café","Compromisos","Contribuciones","Costo Bancos","Dating","Eats","Farmacia","Gas","Gastos Comunes","GTD","Isapre","Luz","Mantencion Auto","MP extras","Nana","Niños","Oficina","Otros","Parafina","Patente Auto","Pago TC","Pensión","Seguro Auto","Seguro Casa","Seguro CLC","Soap Auto","Streaming Disney","Streaming Otros","Streaming Spotify","Streaming YouTube","Supermercado","Vacaciones","Weed","Sin clasificar"];
+const CA=[...CATS].sort((a,b)=>a.localeCompare(b,'es'));
+
+function cc(c){const m={"Bencina":"#e8f0fb","Parafina":"#e8f0fb","Supermercado":"#eaf3de","Eats":"#faeeda","Carrete":"#fdf0fa","Seguro CLC":"#e1f5ee","Seguro Casa":"#e1f5ee","Seguro Auto":"#e1f5ee","GTD":"#e1f5ee","Nana":"#e1f5ee","Gastos Comunes":"#e8f0fb","Animales alimento":"#fff3cd","Weed":"#faeeda","MP extras":"#fbeaf0","Vacaciones":"#e8f5fb","Niños":"#fdf0fa","Isapre":"#e1f5ee"};return m[c]||"#f0f0f0";}
+function fmt(n){return Math.round(n).toLocaleString('es-CL');}
+
+let montoStr='';
+let catSel='Sin clasificar';
+
+// Numpad
+function nk(d){
+  if(montoStr.length>9)return;
+  montoStr+=d;
+  updMonto();
+}
+function nkDel(){montoStr=montoStr.slice(0,-1);updMonto();}
+function updMonto(){
+  const v=parseInt(montoStr||'0');
+  document.getElementById('monto-display').textContent='$'+fmt(v);
+}
+
+// Categorías
+function buildCats(){
+  document.getElementById('cats-wrap').innerHTML=CA.map(c=>`<div class="cchip${c===catSel?' on':''}" onclick="selCat('${c}')">${c}</div>`).join('');
+}
+function selCat(c){catSel=c;buildCats();}
+
+// Toast
+function toast(msg,ok=true){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.style.background=ok?'#1a7a4a':'#c0392b';t.style.display='block';
+  setTimeout(()=>t.style.display='none',2500);
+}
+
+// Guardar
+async function guardar(){
+  const monto=parseInt(montoStr||'0');
+  if(monto<=0){toast('Ingresa un monto',false);return;}
+  const desc=document.getElementById('inp-desc').value.trim()||'Gasto';
+  const nota=document.getElementById('inp-nota').value.trim();
+  const hoy=new Date();
+  const fecha=`${String(hoy.getDate()).padStart(2,'0')}/${String(hoy.getMonth()+1).padStart(2,'0')}`;
+
+  document.getElementById('btn-save').disabled=true;
+  document.getElementById('btn-save').textContent='Guardando...';
+
+  const r=await fetch(`${SB_URL}/rest/v1/gastos_movil`,{
+    method:'POST',
+    headers:{'apikey':SB_KEY,'Authorization':`Bearer ${SB_KEY}`,'Content-Type':'application/json','Prefer':'return=minimal'},
+    body:JSON.stringify({fecha,descripcion:desc,monto,categoria:catSel,nota})
+  });
+
+  document.getElementById('btn-save').disabled=false;
+  document.getElementById('btn-save').textContent='Guardar gasto';
+
+  if(r.ok){
+    toast(`✓ $${fmt(monto)} en ${catSel}`);
+    montoStr='';updMonto();
+    document.getElementById('inp-desc').value='';
+    document.getElementById('inp-nota').value='';
+    catSel='Sin clasificar';buildCats();
+    loadHist();
+  } else {
+    toast('⚠ Error al guardar',false);
+  }
+}
+
+// Historial
+let gastos=[];
+async function loadHist(){
+  document.getElementById('sync').textContent='⟳';
+  const r=await fetch(`${SB_URL}/rest/v1/gastos_movil?select=*&order=created_at.desc&limit=50`,{
+    headers:{'apikey':SB_KEY,'Authorization':`Bearer ${SB_KEY}`}
+  });
+  gastos=await r.json();
+  document.getElementById('sync').textContent=`${gastos.length}`;
+  renderHist();
+}
+
+function renderHist(){
+  if(!gastos.length){document.getElementById('hist-list').innerHTML='<div class="empty">Sin gastos registrados</div>';return;}
+  // Resumen del día
+  const hoy=new Date();
+  const fechaHoy=`${String(hoy.getDate()).padStart(2,'0')}/${String(hoy.getMonth()+1).padStart(2,'0')}`;
+  const totalHoy=gastos.filter(g=>g.fecha===fechaHoy).reduce((a,g)=>a+g.monto,0);
+
+  document.getElementById('hist-list').innerHTML=`
+    <div style="background:#1a237e;color:#fff;border-radius:10px;padding:12px 14px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center">
+      <span style="font-size:12px;opacity:.8">Hoy ${fechaHoy}</span>
+      <span style="font-size:18px;font-weight:700">$${fmt(totalHoy)}</span>
+    </div>
+    ${gastos.map(g=>`
+    <div class="gasto-item">
+      <div class="gasto-left">
+        <div class="gasto-desc">${g.descripcion}</div>
+        <div class="gasto-meta">${g.fecha}${g.nota?' · '+g.nota:''}</div>
+      </div>
+      <div class="gasto-right">
+        <div class="gasto-monto">$${fmt(g.monto)}</div>
+        <div class="gasto-cat" style="background:${cc(g.categoria)}">${g.categoria}</div>
+      </div>
+    </div>`).join('')}`;
+}
+
+function showT(id){
+  document.querySelectorAll('.tab').forEach(t=>t.className='tab');
+  document.querySelectorAll('.pane').forEach(p=>p.className='pane');
+  event.target.className='tab on';
+  document.getElementById('pane-'+id).className='pane on';
+  if(id==='hist')loadHist();
+}
+
+// Init
+buildCats();
+loadHist();
+</script>
+</body>
+</html>
